@@ -1,4 +1,6 @@
+build
 node_modules
+postgres-data
 .eslintcache
 
 # JetBrains IDEs

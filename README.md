@@ -1,15 +1,70 @@
-![CI](https://github.com/nearform/bench-template/actions/workflows/ci.yml/badge.svg?event=push)
+# apollo-typeorm-poc
 
-# Bench Template
-A feature-packed template to start a new repository on the bench, including:
+This repo contains a proof of concept to support the analysis of performance issues in a Apollo-based graphql server.
 
-- code linting with [ESlint](https://eslint.org) and [prettier](https://prettier.io)
-- pre-commit code linting and commit message linting with [husky](https://www.npmjs.com/package/husky) and [commitlint](https://commitlint.js.org/)
-- dependabot setup with automatic merging thanks to ["merge dependabot" GitHub action](https://github.com/fastify/github-action-merge-dependabot)
-- notifications about commits waiting to be released thanks to ["notify release" GitHub action](https://github.com/nearform/github-action-notify-release)
-- PRs' linked issues check with ["check linked issues" GitHub action](https://github.com/nearform/github-action-check-linked-issues)
-- Continuous Integration GitHub workflow
+## Setup
 
-## When you have already a repo
+- `npm i`
+- `docker-compose up -d`
+- `npm run dev`
 
-If you already created a repo and you want to add some of the features above to it, you can have a look at [NearForm MRM Preset](https://github.com/nearform/mrm-preset-nearform).
+## Contents
+
+- typescript codebase
+- postgres database seeded with relatively small amounts of data
+- Apollo server using TypeOrm running on port 4000
+- Fastify server using node-pg running on port 3000
+
+## Performance
+
+Load tests executed via [autocannon](https://github.com/mcollina/autocannon).
+
+### Apollo
+
+#### autocannon command
+
+```
+npx autocannon -H 'content-type: application/json' -b '{"query":"query { salesTypeOrm { amount date id userId storeId productId } } "}' -m POST http://localhost:4000
+```
+
+#### Output
+
+```
+┌─────────┬───────┬───────┬───────┬───────┬──────────┬──────────┬────────┐
+│ Stat    │ 2.5%  │ 50%   │ 97.5% │ 99%   │ Avg      │ Stdev    │ Max    │
+├─────────┼───────┼───────┼───────┼───────┼──────────┼──────────┼────────┤
+│ Latency │ 28 ms │ 32 ms │ 53 ms │ 73 ms │ 35.73 ms │ 29.51 ms │ 575 ms │
+└─────────┴───────┴───────┴───────┴───────┴──────────┴──────────┴────────┘
+┌───────────┬────────┬────────┬─────────┬─────────┬─────────┬────────┬────────┐
+│ Stat      │ 1%     │ 2.5%   │ 50%     │ 97.5%   │ Avg     │ Stdev  │ Min    │
+├───────────┼────────┼────────┼─────────┼─────────┼─────────┼────────┼────────┤
+│ Req/Sec   │ 112    │ 112    │ 298     │ 326     │ 275.8   │ 58.34  │ 112    │
+├───────────┼────────┼────────┼─────────┼─────────┼─────────┼────────┼────────┤
+│ Bytes/Sec │ 1.4 MB │ 1.4 MB │ 3.72 MB │ 4.06 MB │ 3.44 MB │ 727 kB │ 1.4 MB │
+└───────────┴────────┴────────┴─────────┴─────────┴─────────┴────────┴────────┘
+```
+
+### Fastify
+
+#### autocannon command
+
+```
+npx autocannon -H 'content-type: application/json' -b '{"query":"query { salesPg { amount date id userId storeId productId } } "}' -m POST http://localhost:3000/graphql
+```
+
+#### Output
+
+```
+┌─────────┬───────┬───────┬───────┬───────┬──────────┬──────────┬────────┐
+│ Stat    │ 2.5%  │ 50%   │ 97.5% │ 99%   │ Avg      │ Stdev    │ Max    │
+├─────────┼───────┼───────┼───────┼───────┼──────────┼──────────┼────────┤
+│ Latency │ 17 ms │ 21 ms │ 33 ms │ 37 ms │ 23.21 ms │ 20.18 ms │ 452 ms │
+└─────────┴───────┴───────┴───────┴───────┴──────────┴──────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev  │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
+│ Req/Sec   │ 262     │ 262     │ 429     │ 481     │ 422     │ 58.02  │ 262     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
+│ Bytes/Sec │ 3.53 MB │ 3.53 MB │ 5.78 MB │ 6.49 MB │ 5.69 MB │ 782 kB │ 3.53 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴────────┴─────────┘
+```
